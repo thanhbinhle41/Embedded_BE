@@ -18,6 +18,10 @@ class ArduinoClient:
         self.FLAG_CONNECTED = 0
         self.arduinoClient = None
         
+        self.tmpContinuousData = ""
+        self.isLightOn = False
+        self.isPumpOn = False
+        
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -31,7 +35,7 @@ class ArduinoClient:
     def on_message(self, client, userdata, msg):
         payload = msg.payload.decode()
         topic = msg.topic
-        print(payload)
+        print(f'{payload} from {topic}')
         if topic != self.TOPIC_GET:
             return
         self.callbackArduinoClient(payload)
@@ -55,55 +59,48 @@ class ArduinoClient:
             time.sleep(100)
             
     def callbackArduinoClient(self, msg):
-        print(msg, "in call back")
-        if "humidity" in msg and "light" in msg and "sound" in msg:
+        if "humidity" in msg and "light" in msg:
             data = msg.split("|")
             humidity = data[0].split("=")[1]
             light = data[1].split("=")[1]
-            sound = data[2].split("=")[1]
+            water = data[2].split("=")[1]
 
-            # HANDLE HUMIDITY
-            if int(humidity) > 100:
-                self.publish(self.arduinoClient, "Pump=on")
-            elif int(humidity) > 200:
-                self.publish(self.arduinoClient, "Pump=off")
+            # # HANDLE HUMIDITY
+            # if int(humidity) > 800 and self.isPumpOn == False:
+            #     self.isPumpOn = True
+            #     self.publish(self.arduinoClient, "Pump=on")
+            # elif int(humidity) <= 800 and self.isPumpOn == True:
+            #     self.isPumpOn = False
+            #     self.publish(self.arduinoClient, "Pump=off")
 
-            # HANDLE LIGHT
-            if int(light) > 100:
-                self.publish(self.arduinoClient, "Light=on")
-            elif int(light) > 200:
-                self.publish(self.arduinoClient, "Light=off")
+            # # HANDLE LIGHT
+            # if int(light) < 2500 and self.isLightOn == False:
+            #     self.isLightOn = True
+            #     self.publish(self.arduinoClient, "Light=on")
+            # elif int(light) >= 2500 and self.isLightOn == True:
+            #     self.isLightOn = False
+            #     self.publish(self.arduinoClient, "Light=off")
 
-            # HANDLE SOUND
-            if int(sound) > 100:
-                self.publish(self.arduinoClient, "Servo=on")
-            elif int(sound) > 200:
-                self.publish(self.arduinoClient, "Servo=off")
-
-            if isSendDataContinuous:
-                tmpData = {
-                    "type": "continuous",
-                    "humidity": humidity,
-                    "light": light,
-                    "sound": sound
-                }
-                dataPublish = json.dumps(tmpData)
-                isSendDataContinuous = False
-                WebClient().publish(self.webClient, dataPublish)
+            tmpData = {
+                "soil": humidity,
+                "light": light,
+                "water": water,
+            }
+            self.tmpContinuousData = tmpData
+            
 
         else:
             data = msg.split("|")
-            temperature = data[0].split("=")[1]
-            air_humidity = data[1].split("=")[1]
-            water = data[2].split("=")[1]
+            air_humidity = data[0].split("=")[1]
+            temperature = data[1].split("=")[1]
+            
             tmpData = {
-                "type": "sequence",
-                "hutemperaturemidity": temperature,
+                "type": "measure",
+                "temperature": temperature,
                 "air_humidity": air_humidity,
-                "water": water
             }
+            tmpData.update(self.tmpContinuousData)
             dataPublish = json.dumps(tmpData)
-            print(dataPublish, self.webClient)
             WebClient().publish(self.webClient, dataPublish)
             
     

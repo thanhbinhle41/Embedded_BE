@@ -44,7 +44,8 @@ class WebClient:
         if payload["type"] == "measure_sequence":
             ArduinoClient2().publish(self.arduinoClient2, "Analog=0")
         elif payload["type"] == "measure_continuous":
-            isSendDataContinuous = True
+            # isSendDataContinuous = True
+            pass
     
         if payload["type"] == "turn_on":
             device = payload["device"]
